@@ -39,7 +39,7 @@ app.post("/register", (req, res) => {
   // Hashing the password before storing it
   const hashedPassword = bcrypt.hashSync(password, 8);
   const sql = "INSERT INTO users (username, password) VALUES (?, ?)";
-  db.run(sql, [username, hashedPassword], (err) => {
+  db.run(sql, [username, hashedPassword], function (err) {
     if (err) {
       // The UNIQUE statement in the database will cause an error If the username is already taken
       return res.status(400).json({ error: "Username already taken" });
@@ -101,7 +101,7 @@ app.post("/posts", authenticateToken, (req, res) => {
   const { title, content } = req.body;
   const userId = req.user.id;
   const sql = "INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)";
-  db.run(sql, [title, content, userId], (err) => {
+  db.run(sql, [title, content, userId], function (err) {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -122,7 +122,7 @@ app.delete("/post/:id", authenticateToken, (req, res) => {
     if (post.userId != userId) {
       return res
         .status(403)
-        .json({ error: "The post can only be deleted by it's own user" });
+        .json({ error: "The post can only be deleted by the author" });
     }
     // If the check is alright, proceed
     const deleteSql = "DELETE FROM posts WHERE id = ?";
