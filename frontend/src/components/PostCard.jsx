@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_URL = "http://localhost:3000";
+const API_URL = "https://blog-api-74l4.onrender.com";
 
 const PostCard = ({
   post,

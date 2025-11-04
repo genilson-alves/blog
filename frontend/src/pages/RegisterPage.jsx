@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-const API_URL = "http://localhost:3000";
+const API_URL = "https://blog-api-74l4.onrender.com";
 
 const RegisterPage = ({ setModalMessage }) => {
   const [username, setUsername] = useState("");

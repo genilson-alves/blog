@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import PostCard from "../components/PostCard.jsx";
 
-const API_URL = "http://localhost:3000";
+const API_URL = "https://blog-api-74l4.onrender.com";
 
 const WelcomeBanner = () => (
   <div className="bg-white rounded-xl shadow-lg p-8 mb-8 text-center">
