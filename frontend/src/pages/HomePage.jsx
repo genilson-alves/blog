@@ -1,12 +1,8 @@
-// src/pages/HomePage.jsx
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import PostCard from "../components/PostCard";
+import PostCard from "../components/PostCard.jsx";
 
 const API_URL = "http://localhost:3000";
-
-// --- SOLUTION: Define components outside the HomePage component ---
 
 const WelcomeBanner = () => (
   <div className="bg-white rounded-xl shadow-lg p-8 mb-8 text-center">
@@ -20,13 +16,13 @@ const WelcomeBanner = () => (
     <div className="flex justify-center space-x-4">
       <Link
         to="/login"
-        className="text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold py-3 px-6 rounded-lg"
+        className="text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold py-3 px-6 rounded-lg transition-colors duration-200"
       >
         Login
       </Link>
       <Link
         to="/register"
-        className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg"
+        className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200"
       >
         Register
       </Link>
@@ -34,7 +30,6 @@ const WelcomeBanner = () => (
   </div>
 );
 
-// We need to pass props to this component, so we define it to accept them
 const CreatePostForm = ({
   handleCreatePost,
   newPostTitle,
@@ -49,7 +44,7 @@ const CreatePostForm = ({
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Title"
+          placeholder="Post Title"
           value={newPostTitle}
           onChange={(e) => setNewPostTitle(e.target.value)}
           className="shadow-inner appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -67,16 +62,15 @@ const CreatePostForm = ({
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-blue-300"
+        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-blue-300 transition-all duration-200 transform hover:scale-105"
       >
-        {isLoading ? "Posting..." : "Post"}
+        {isLoading ? "Posting..." : "Create Post"}
       </button>
     </form>
   </div>
 );
 
-const HomePage = ({ token, userId, setModalMessage }) => {
-  // <-- Add userId prop
+const HomePage = ({ token, currentUser, setModalMessage }) => {
   const [posts, setPosts] = useState([]);
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
@@ -100,6 +94,15 @@ const HomePage = ({ token, userId, setModalMessage }) => {
     fetchPosts();
   }, []);
 
+  const handleApiError = async (response) => {
+    let errorMsg = `Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      errorMsg = errorData.error || errorMsg;
+    } catch (e) {}
+    throw new Error(errorMsg);
+  };
+
   const handleCreatePost = async (e) => {
     e.preventDefault();
     if (!newPostTitle || !newPostContent) {
@@ -116,9 +119,7 @@ const HomePage = ({ token, userId, setModalMessage }) => {
         },
         body: JSON.stringify({ title: newPostTitle, content: newPostContent }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to create post");
-
+      if (!response.ok) await handleApiError(response);
       setModalMessage("Post created successfully!");
       setNewPostTitle("");
       setNewPostContent("");
@@ -130,23 +131,36 @@ const HomePage = ({ token, userId, setModalMessage }) => {
     }
   };
 
-  // --- NEW: Function to handle deleting a post ---
   const handleDeletePost = async (postId) => {
-    if (!window.confirm("Are you sure you want to delete this post?")) return;
-
+    if (!window.confirm("Are you sure you want to delete this post?")) {
+      return;
+    }
     try {
       const response = await fetch(`${API_URL}/posts/${postId}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) await handleApiError(response);
+      setModalMessage("Post deleted successfully!");
+      fetchPosts();
+    } catch (error) {
+      setModalMessage(error.message);
+    }
+  };
+
+  const handleUpdatePost = async (postId, updatedData) => {
+    try {
+      const response = await fetch(`${API_URL}/posts/${postId}`, {
+        method: "PUT",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify(updatedData),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to delete post");
-
-      setModalMessage("Post deleted successfully!");
-      // Update the UI by removing the post from the state
-      setPosts(posts.filter((p) => p.id !== postId));
+      if (!response.ok) await handleApiError(response);
+      setModalMessage("Post updated successfully!");
+      fetchPosts();
     } catch (error) {
       setModalMessage(error.message);
     }
@@ -169,13 +183,16 @@ const HomePage = ({ token, userId, setModalMessage }) => {
 
       <h1 className="text-4xl font-bold text-gray-800 mb-8">Latest Posts</h1>
       <div className="space-y-8">
-        {posts.length > 0 ? (
+        {posts && posts.length > 0 ? (
           posts.map((post) => (
             <PostCard
               key={post.id}
               post={post}
-              userId={userId} // Pass the current user's ID
-              onDelete={handleDeletePost} // Pass the delete handler
+              currentUser={currentUser}
+              token={token}
+              onDelete={handleDeletePost}
+              onUpdate={handleUpdatePost}
+              setModalMessage={setModalMessage}
             />
           ))
         ) : (

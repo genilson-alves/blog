@@ -1,6 +1,4 @@
-// src/pages/LoginPage.jsx
-
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 const API_URL = "http://localhost:3000";

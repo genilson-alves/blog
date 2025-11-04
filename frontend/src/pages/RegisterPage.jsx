@@ -1,6 +1,4 @@
-// src/pages/RegisterPage.jsx
-
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 const API_URL = "http://localhost:3000";
@@ -36,7 +34,7 @@ const RegisterPage = ({ setModalMessage }) => {
     <div className="flex justify-center">
       <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8">
         <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
-          Create an Account
+          Create an account
         </h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">

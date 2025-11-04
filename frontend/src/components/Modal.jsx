@@ -1,7 +1,3 @@
-// src/components/Modal.jsx
-
-import React from "react";
-
 const Modal = ({ message, onClose }) => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
     <div className="bg-white rounded-lg shadow-xl p-6 w-11/12 max-w-sm text-center">

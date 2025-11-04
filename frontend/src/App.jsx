@@ -1,35 +1,32 @@
-// src/App.jsx
-
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode"; // <-- Import jwt-decode
-import Header from "./components/Header";
-import Footer from "./components/Footer";
-import Modal from "./components/Modal";
-import HomePage from "./pages/HomePage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
+import { jwtDecode } from "jwt-decode";
+import Header from "./components/Header.jsx";
+import Footer from "./components/Footer.jsx";
+import Modal from "./components/Modal.jsx";
+import HomePage from "./pages/HomePage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem("blog-token"));
   const [modalMessage, setModalMessage] = useState("");
-  const [userId, setUserId] = useState(null); // <-- State for the user's ID
+  const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (token) {
       localStorage.setItem("blog-token", token);
       try {
-        const decoded = jwtDecode(token); // Decode the token
-        setUserId(decoded.id); // Set the user ID from the token's payload
+        const decoded = jwtDecode(token);
+        setCurrentUser({ id: decoded.id, username: decoded.username });
       } catch (error) {
-        // Handle invalid token
         console.error("Invalid token:", error);
         handleLogout();
       }
     } else {
       localStorage.removeItem("blog-token");
-      setUserId(null); // Clear user ID on logout
+      setCurrentUser(null);
     }
   }, [token]);
 
@@ -51,10 +48,10 @@ export default function App() {
             element={
               <HomePage
                 token={token}
-                userId={userId}
+                currentUser={currentUser}
                 setModalMessage={setModalMessage}
               />
-            } // <-- Pass userId
+            }
           />
           <Route
             path="/login"

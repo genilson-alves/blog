@@ -1,42 +1,70 @@
-// index.js
-
 import dotenv from "dotenv";
-dotenv.config();
-
 import express from "express";
 import cors from "cors";
-import sqlite3 from "sqlite3";
+import pg from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import validator from "validator";
 
+dotenv.config();
+
 const app = express();
 const port = 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
-
 app.use(cors());
 app.use(express.json());
 
-const db = new sqlite3.Database("./blog.db", (err) => {
-  if (err) {
-    console.error("Error opening database " + err.message);
-  } else {
-    db.run(
-      "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL)"
-    );
-    db.run(
-      "CREATE TABLE IF NOT EXISTS posts (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, content TEXT NOT NULL, user_id INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id))"
-    );
-  }
+const db = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
 });
 
-app.post("/register", (req, res) => {
+const initializeDatabase = async () => {
+  try {
+    await db.query("SELECT NOW()");
+    console.log("Database connected successfully");
+
+    const usersTable = `
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+      );`;
+
+    const postsTable = `
+      CREATE TABLE IF NOT EXISTS posts (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        user_id INTEGER REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );`;
+
+    const commentsTable = `
+      CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        content TEXT NOT NULL,
+        post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );`;
+
+    await db.query(usersTable);
+    await db.query(postsTable);
+    await db.query(commentsTable);
+    console.log("Tables created or verified successfully.");
+  } catch (err) {
+    console.error("Error initializing database:", err);
+  }
+};
+
+initializeDatabase();
+
+app.post("/register", async (req, res) => {
   const { username, password } = req.body;
-  if (!validator.isLength(username, { min: 3, max: 20 })) {
+  if (!validator.isLength(username, { min: 3, max: 20 }))
     return res
       .status(400)
       .json({ error: "Username must be between 3 and 20 characters." });
-  }
   if (
     !validator.isStrongPassword(password, {
       minLength: 8,
@@ -45,38 +73,51 @@ app.post("/register", (req, res) => {
       minNumbers: 1,
       minSymbols: 1,
     })
-  ) {
+  )
     return res.status(400).json({
       error:
         "Password must be at least 8 characters long and contain an uppercase letter, a lowercase letter, a number, and a symbol.",
     });
-  }
-  const hashedPassword = bcrypt.hashSync(password, 10);
-  const sql = "INSERT INTO users (username, password) VALUES (?, ?)";
-  db.run(sql, [username, hashedPassword], function (err) {
-    if (err) {
+
+  try {
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const sql =
+      "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id";
+    const result = await db.query(sql, [username, hashedPassword]);
+    res.status(201).json({
+      message: "User created successfully",
+      userId: result.rows[0].id,
+    });
+  } catch (err) {
+    if (err.code === "23505") {
       return res.status(400).json({ error: "Username already taken" });
     }
-    res
-      .status(201)
-      .json({ message: "User created successfully", userId: this.lastID });
-  });
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  const sql = "SELECT * FROM users WHERE username = ?";
-  db.get(sql, [username], (err, user) => {
-    if (err || !user) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
+  const sql = "SELECT * FROM users WHERE username = $1";
+  try {
+    const result = await db.query(sql, [username]);
+    const user = result.rows[0];
+
+    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
     const passwordIsValid = bcrypt.compareSync(password, user.password);
-    if (!passwordIsValid) {
+    if (!passwordIsValid)
       return res.status(401).json({ error: "Invalid credentials" });
-    }
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: 86400 });
-    res.status(200).json({ message: "Login successful", token: token });
-  });
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: 86400 }
+    );
+    res.status(200).json({ message: "Login successful", token });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 function authenticateToken(req, res, next) {
@@ -90,64 +131,129 @@ function authenticateToken(req, res, next) {
   });
 }
 
-app.get("/posts", (req, res) => {
-  const sql =
-    "SELECT p.*, u.username as author FROM posts p JOIN users u ON p.user_id = u.id ORDER BY created_at DESC LIMIT 10";
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json({ posts: rows });
-  });
-});
-
-app.post("/posts", authenticateToken, (req, res) => {
-  const { title, content } = req.body;
-  const userId = req.user.id;
-  const sql = "INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)";
-  db.run(sql, [title, content, userId], function (err) {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.status(201).json({ message: "Post created", postId: this.lastID });
-  });
-});
-
-// --- CORRECTED DELETE ROUTE ---
-app.delete("/posts/:id", authenticateToken, (req, res) => {
-  // 1. Convert the post ID from the URL string to a number immediately.
-  const postId = Number(req.params.id);
-  const userId = req.user.id;
-
-  // Check if postId is a valid number
-  if (isNaN(postId)) {
-    return res.status(400).json({ error: "Invalid post ID" });
+app.get("/posts", async (req, res) => {
+  const sql = `
+        SELECT p.id, p.title, p.content, p.user_id, p.created_at, u.username as author,
+        (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count
+        FROM posts p JOIN users u ON p.user_id = u.id 
+        ORDER BY p.created_at DESC LIMIT 10`;
+  try {
+    const result = await db.query(sql);
+    res.json({ posts: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
+});
 
-  const verifySql = "SELECT user_id FROM posts WHERE id = ?";
-  db.get(verifySql, [postId], (err, post) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    if (!post) {
-      return res.status(404).json({ error: "Post not found" });
-    }
-
-    // 2. Now the comparison is guaranteed to be number vs number.
-    if (post.user_id !== userId) {
-      return res
-        .status(403)
-        .json({ error: "Forbidden: You can only delete your own posts" });
-    }
-
-    const deleteSql = "DELETE FROM posts WHERE id = ?";
-    db.run(deleteSql, [postId], function (err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ message: "Post deleted successfully" });
+app.post("/posts", authenticateToken, async (req, res) => {
+  const { title, content } = req.body;
+  const sql =
+    "INSERT INTO posts (title, content, user_id) VALUES ($1, $2, $3) RETURNING id";
+  try {
+    const result = await db.query(sql, [title, content, req.user.id]);
+    res.status(201).json({
+      message: "Post created",
+      postId: result.rows[0].id,
     });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/posts/:id", authenticateToken, async (req, res) => {
+  const { title, content } = req.body;
+  const sql =
+    "UPDATE posts SET title = $1, content = $2 WHERE id = $3 AND user_id = $4";
+  try {
+    const result = await db.query(sql, [
+      title,
+      content,
+      req.params.id,
+      req.user.id,
+    ]);
+    if (result.rowCount === 0)
+      return res.status(404).json({
+        error: "Post not found or you don't have permission to edit it.",
+      });
+    res.json({ message: "Post updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/posts/:id", authenticateToken, async (req, res) => {
+  const sql = "DELETE FROM posts WHERE id = $1 AND user_id = $2";
+  try {
+    const result = await db.query(sql, [req.params.id, req.user.id]);
+    if (result.rowCount === 0)
+      return res.status(404).json({
+        error: "Post not found or you don't have permission to delete it.",
+      });
+    res.json({ message: "Post deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/posts/:postId/comments", async (req, res) => {
+  const sql = `
+        SELECT c.id, c.content, c.user_id, c.created_at, u.username as author 
+        FROM comments c JOIN users u ON c.user_id = u.id 
+        WHERE c.post_id = $1 ORDER BY c.created_at ASC`;
+  try {
+    const result = await db.query(sql, [req.params.postId]);
+    res.json({ comments: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/posts/:postId/comments", authenticateToken, async (req, res) => {
+  const { content } = req.body;
+  const sql =
+    "INSERT INTO comments (content, post_id, user_id) VALUES ($1, $2, $3) RETURNING id";
+  try {
+    const result = await db.query(sql, [
+      content,
+      req.params.postId,
+      req.user.id,
+    ]);
+    res.status(201).json({
+      message: "Comment created",
+      commentId: result.rows[0].id,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/comments/:id", authenticateToken, async (req, res) => {
+  const { content } = req.body;
+  const sql = "UPDATE comments SET content = $1 WHERE id = $2 AND user_id = $3";
+  try {
+    const result = await db.query(sql, [content, req.params.id, req.user.id]);
+    if (result.rowCount === 0)
+      return res.status(404).json({
+        error: "Comment not found or you don't have permission to edit it.",
+      });
+    res.json({ message: "Comment updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/comments/:id", authenticateToken, async (req, res) => {
+  const sql = "DELETE FROM comments WHERE id = $1 AND user_id = $2";
+  try {
+    const result = await db.query(sql, [req.params.id, req.user.id]);
+    if (result.rowCount === 0)
+      return res.status(404).json({
+        error: "Comment not found or you don't have permission to delete it.",
+      });
+    res.json({ message: "Comment deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(port, () => {
