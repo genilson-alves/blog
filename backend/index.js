@@ -52,6 +52,10 @@ const initializeDatabase = async () => {
     await db.query(postsTable);
     await db.query(commentsTable);
     console.log("Tables created or verified successfully.");
+
+    app.listen(port, () => {
+      console.log(`Server running at http://localhost:${port}`);
+    });
   } catch (err) {
     console.error("Error initializing database:", err);
   }
@@ -61,10 +65,11 @@ initializeDatabase();
 
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
-  if (!validator.isLength(username, { min: 3, max: 20 }))
+
+  if (!validator.isLength(username, { min: 4, max: 20 }))
     return res
       .status(400)
-      .json({ error: "Username must be between 3 and 20 characters." });
+      .json({ error: "Username must be between 4 and 20 characters." });
   if (
     !validator.isStrongPassword(password, {
       minLength: 8,
@@ -98,6 +103,13 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
+
+  if (!username || username.length < 4) {
+    return res
+      .status(400)
+      .json({ error: "Username must be at least 4 characters." });
+  }
+
   const sql = "SELECT * FROM users WHERE username = $1";
   try {
     const result = await db.query(sql, [username]);
@@ -254,8 +266,4 @@ app.delete("/comments/:id", authenticateToken, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
 });

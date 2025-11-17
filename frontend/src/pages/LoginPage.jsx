@@ -1,7 +1,7 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-const API_URL = "https://blog-api-74l4.onrender.com";
+const API_URL = "https://blog-cjrv.onrender.com/";
 
 const LoginPage = ({ setToken, setModalMessage }) => {
   const [username, setUsername] = useState("");
@@ -9,18 +9,40 @@ const LoginPage = ({ setToken, setModalMessage }) => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  const handleApiError = async (response) => {
+    let errorMsg = `Error: ${response.status} ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      errorMsg = errorData.error || errorMsg;
+    } catch (e) {}
+    throw new Error(errorMsg);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+
+    if (username.length < 4) {
+      setModalMessage("Username must be at least 4 characters.");
+      setIsLoading(false);
+      return;
+    }
+    if (password.length === 0) {
+      setModalMessage("Password cannot be empty.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Login failed");
 
+      if (!response.ok) await handleApiError(response);
+
+      const data = await response.json();
       setToken(data.token);
       setModalMessage("Login successful!");
       navigate("/");
@@ -73,7 +95,7 @@ const LoginPage = ({ setToken, setModalMessage }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-blue-300"
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg disabled:bg-blue-300 transition-all duration-200 transform hover:scale-105"
           >
             {isLoading ? "Logging in..." : "Login"}
           </button>
