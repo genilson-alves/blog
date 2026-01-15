@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
-const API_URL = "https://blog-api-74l4.onrender.com";
+import API_URL from "../config";
 
 const PostCard = ({
   post,
@@ -25,11 +25,13 @@ const PostCard = ({
     try {
       const errorData = await response.json();
       errorMsg = errorData.error || errorMsg;
-    } catch (e) {}
+    } catch (e) {
+      console.debug("Error parsing error response", e);
+    }
     throw new Error(errorMsg);
   };
 
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     if (!post.id) return;
     try {
       const response = await fetch(`${API_URL}/posts/${post.id}/comments`);
@@ -39,13 +41,13 @@ const PostCard = ({
     } catch (error) {
       setModalMessage(error.message);
     }
-  };
+  }, [post.id, setModalMessage]);
 
   useEffect(() => {
     if (showComments) {
       fetchComments();
     }
-  }, [showComments]);
+  }, [showComments, fetchComments]);
 
   const handleSavePost = () => {
     onUpdate(post.id, { title: editedTitle, content: editedContent });

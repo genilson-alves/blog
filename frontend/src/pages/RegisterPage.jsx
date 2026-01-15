@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-const API_URL = "https://blog-api-1a5m.onrender.com";
+import API_URL from "../config";
 
 const RegisterPage = ({ setModalMessage }) => {
   const [username, setUsername] = useState("");
@@ -15,7 +15,9 @@ const RegisterPage = ({ setModalMessage }) => {
     try {
       const errorData = await response.json();
       errorMsg = errorData.error || errorMsg;
-    } catch (e) {}
+    } catch (e) {
+      console.debug("Error parsing error response", e);
+    }
     throw new Error(errorMsg);
   };
 

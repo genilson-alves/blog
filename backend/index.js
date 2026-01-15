@@ -8,10 +8,23 @@ import validator from "validator";
 
 dotenv.config();
 
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL ERROR: JWT_SECRET is not defined.");
+  process.exit(1);
+}
+
+if (!process.env.DATABASE_URL) {
+  console.error("FATAL ERROR: DATABASE_URL is not defined.");
+  process.exit(1);
+}
+
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET;
-app.use(cors());
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:3000"],
+  credentials: true
+}));
 app.use(express.json());
 
 const db = new pg.Pool({
@@ -159,6 +172,11 @@ app.get("/posts", async (req, res) => {
 
 app.post("/posts", authenticateToken, async (req, res) => {
   const { title, content } = req.body;
+  if (!title || !validator.isLength(title.trim(), { min: 1 }))
+    return res.status(400).json({ error: "Title is required" });
+  if (!content || !validator.isLength(content.trim(), { min: 1 }))
+    return res.status(400).json({ error: "Content is required" });
+
   const sql =
     "INSERT INTO posts (title, content, user_id) VALUES ($1, $2, $3) RETURNING id";
   try {
@@ -174,6 +192,11 @@ app.post("/posts", authenticateToken, async (req, res) => {
 
 app.put("/posts/:id", authenticateToken, async (req, res) => {
   const { title, content } = req.body;
+  if (!title || !validator.isLength(title.trim(), { min: 1 }))
+    return res.status(400).json({ error: "Title is required" });
+  if (!content || !validator.isLength(content.trim(), { min: 1 }))
+    return res.status(400).json({ error: "Content is required" });
+
   const sql =
     "UPDATE posts SET title = $1, content = $2 WHERE id = $3 AND user_id = $4";
   try {
@@ -222,6 +245,9 @@ app.get("/posts/:postId/comments", async (req, res) => {
 
 app.post("/posts/:postId/comments", authenticateToken, async (req, res) => {
   const { content } = req.body;
+  if (!content || !validator.isLength(content.trim(), { min: 1 }))
+    return res.status(400).json({ error: "Content is required" });
+
   const sql =
     "INSERT INTO comments (content, post_id, user_id) VALUES ($1, $2, $3) RETURNING id";
   try {
@@ -241,6 +267,9 @@ app.post("/posts/:postId/comments", authenticateToken, async (req, res) => {
 
 app.put("/comments/:id", authenticateToken, async (req, res) => {
   const { content } = req.body;
+  if (!content || !validator.isLength(content.trim(), { min: 1 }))
+    return res.status(400).json({ error: "Content is required" });
+
   const sql = "UPDATE comments SET content = $1 WHERE id = $2 AND user_id = $3";
   try {
     const result = await db.query(sql, [content, req.params.id, req.user.id]);

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import PostCard from "../components/PostCard.jsx";
 
-const API_URL = "https://blog-api-74l4.onrender.com";
+import API_URL from "../config";
 
 const WelcomeBanner = () => (
   <div className="bg-white rounded-xl shadow-lg p-8 mb-8 text-center">
@@ -76,7 +76,7 @@ const HomePage = ({ token, currentUser, setModalMessage }) => {
   const [newPostContent, setNewPostContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/posts`);
       const data = await response.json();
@@ -88,18 +88,20 @@ const HomePage = ({ token, currentUser, setModalMessage }) => {
     } catch (error) {
       setModalMessage(error.message);
     }
-  };
+  }, [setModalMessage]);
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [fetchPosts]);
 
   const handleApiError = async (response) => {
     let errorMsg = `Error: ${response.status} ${response.statusText}`;
     try {
       const errorData = await response.json();
       errorMsg = errorData.error || errorMsg;
-    } catch (e) {}
+    } catch (e) {
+      console.debug("Error parsing error response", e);
+    }
     throw new Error(errorMsg);
   };
 

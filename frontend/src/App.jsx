@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import Header from "./components/Header.jsx";
@@ -14,6 +14,11 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
+  const handleLogout = useCallback(() => {
+    setToken(null);
+    navigate("/");
+  }, [navigate]);
+
   useEffect(() => {
     if (token) {
       localStorage.setItem("blog-token", token);
@@ -28,12 +33,7 @@ export default function App() {
       localStorage.removeItem("blog-token");
       setCurrentUser(null);
     }
-  }, [token]);
-
-  const handleLogout = () => {
-    setToken(null);
-    navigate("/");
-  };
+  }, [token, handleLogout]);
 
   return (
     <div className="bg-gray-50 min-h-screen font-sans flex flex-col">
