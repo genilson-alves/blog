@@ -19,13 +19,14 @@ services:
         generateValue: true
       - key: FRONTEND_URL
         fromService:
-          type: static
+          type: web
           name: blog-frontend
           property: url
 
   # Frontend Static Site
-  - type: static
+  - type: web
     name: blog-frontend
+    runtime: static
     region: oregon
     plan: free
     rootDir: frontend
