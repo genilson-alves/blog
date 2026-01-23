@@ -45,19 +45,20 @@ const db = new pg.Pool({
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
 });
 
-const initializeDatabase = async () => {
-  try {
-    await db.query("SELECT NOW()");
-    console.log("Database connected successfully");
+const initializeDatabase = async (retries = 5) => {
+  while (retries > 0) {
+    try {
+      await db.query("SELECT NOW()");
+      console.log("Database connected successfully");
 
-    const usersTable = `
+      const usersTable = `
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL
       );`;
 
-    const postsTable = `
+      const postsTable = `
       CREATE TABLE IF NOT EXISTS posts (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
@@ -66,7 +67,7 @@ const initializeDatabase = async () => {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );`;
 
-    const commentsTable = `
+      const commentsTable = `
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
         content TEXT NOT NULL,
@@ -75,21 +76,33 @@ const initializeDatabase = async () => {
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );`;
 
-    await db.query(usersTable);
-    await db.query(postsTable);
-    await db.query(commentsTable);
-    console.log("Tables created or verified successfully.");
-
-    app.listen(port, () => {
-      console.log(`Server running at http://localhost:${port}`);
-    });
-  } catch (err) {
-    console.error("Error initializing database:", err);
-    process.exit(1);
+      await db.query(usersTable);
+      await db.query(postsTable);
+      await db.query(commentsTable);
+      console.log("Tables created or verified successfully.");
+      
+      break; // Success
+    } catch (err) {
+      console.error(`Error initializing database (retries left: ${retries - 1}):`, err);
+      retries -= 1;
+      if (retries === 0) {
+        console.error("Failed to connect to database after multiple attempts.");
+        process.exit(1);
+      }
+      await new Promise(res => setTimeout(res, 5000)); // Wait 5 seconds
+    }
   }
+
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
 };
 
 initializeDatabase();
+
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
 
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
