@@ -21,13 +21,12 @@ services:
         fromService:
           type: web
           name: blog-frontend
-          property: url
+          property: host
 
   # Frontend Static Site
   - type: web
     name: blog-frontend
     runtime: static
-    region: oregon
     plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
@@ -37,7 +36,7 @@ services:
         fromService:
           type: web
           name: blog-api
-          property: url
+          property: host
 
 databases:
   - name: blog-db
