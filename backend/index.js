@@ -28,7 +28,14 @@ if (frontendUrl && !frontendUrl.startsWith("http")) {
 }
 
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000", frontendUrl].filter(Boolean),
+  origin: (origin, callback) => {
+    const allowedOrigins = ["http://localhost:5173", "http://localhost:3000", frontendUrl].filter(Boolean);
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".onrender.com")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -78,6 +85,7 @@ const initializeDatabase = async () => {
     });
   } catch (err) {
     console.error("Error initializing database:", err);
+    process.exit(1);
   }
 };
 
