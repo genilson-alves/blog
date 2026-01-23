@@ -19,18 +19,16 @@ services:
         generateValue: true
       - key: FRONTEND_URL
         fromService:
-          type: web
+          type: static_site
           name: blog-frontend
           property: host
 
   # Frontend Static Site
-  - type: web
+  - type: static_site
     name: blog-frontend
-    runtime: static
-    plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
-    staticPublishPath: dist
+    publishPath: dist
     envVars:
       - key: VITE_API_URL
         fromService:
