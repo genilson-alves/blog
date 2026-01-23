@@ -24,6 +24,9 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 let frontendUrl = process.env.FRONTEND_URL;
 if (frontendUrl && !frontendUrl.startsWith("http")) {
+  if (!frontendUrl.includes(".")) {
+    frontendUrl = `${frontendUrl}.onrender.com`;
+  }
   frontendUrl = `https://${frontendUrl}`;
 }
 
