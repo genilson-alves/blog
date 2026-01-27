@@ -1,32 +1,48 @@
 # Blog Application
 
-A full-stack blog application built with React, Node.js, Express, and PostgreSQL.
+A full-stack blog application built with React, Node.js, Express, and PostgreSQL. Designed for performance, scalability, and ease of deployment.
 
 ## Features
 
-- **User Authentication**: Secure registration and login using JWT.
-- **Blog Posts**: Create, read, update, and delete posts.
-- **Comments**: Add comments to posts.
-- **Responsive Design**: Built with Tailwind CSS for a modern, responsive UI.
+- **User Authentication**: Secure registration and login using JWT (JSON Web Tokens).
+- **Blog Posts**: Create, read, update, and delete posts (CRUD).
+- **Comments**: Interactive comment sections for each post.
+- **Responsive Design**: Modern UI built with Tailwind CSS, fully responsive across devices.
+- **Automatic Setup**: Database tables are automatically initialized on server startup.
+
+## Project Structure
+
+```
+blog/
+├── backend/            # Node.js/Express API server
+│   ├── index.js        # Entry point & app logic
+│   └── package.json    # Backend dependencies
+├── frontend/           # React/Vite client application
+│   ├── src/            # Source code (Components, Pages)
+│   └── vite.config.js  # Vite configuration
+├── render.yaml         # Render deployment configuration (Blueprint)
+└── README.md           # Project documentation
+```
 
 ## Tech Stack
 
 ### Backend
-- **Node.js & Express**: RESTful API server.
-- **PostgreSQL**: Relational database for storing users, posts, and comments.
-- **Authentication**: `bcryptjs` for password hashing and `jsonwebtoken` for session management.
-- **Validation**: `validator` for input sanitization and validation.
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database**: PostgreSQL
+- **Authentication**: `bcryptjs` (hashing) & `jsonwebtoken` (sessions)
+- **Validation**: `validator` library
 
 ### Frontend
-- **React**: UI library.
-- **Vite**: Build tool and development server.
-- **Tailwind CSS**: Utility-first CSS framework.
-- **React Router**: Client-side routing.
+- **Framework**: React 19
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS v4
+- **Routing**: React Router v7
 
 ## Prerequisites
 
-- Node.js (v18+ recommended)
-- PostgreSQL installed and running
+- **Node.js**: v18 or higher recommended.
+- **PostgreSQL**: A running instance of PostgreSQL.
 
 ## Getting Started
 
@@ -42,15 +58,17 @@ Install dependencies:
 npm install
 ```
 
-Create a `.env` file in the `backend` directory with the following variables:
+Create a `.env` file in the `backend` directory:
 ```env
 PORT=3000
 DATABASE_URL=postgresql://user:password@localhost:5432/blog_db
 JWT_SECRET=your_secure_jwt_secret_key
+FRONTEND_URL=http://localhost:5173
 ```
-*Note: Replace `user`, `password`, and `blog_db` with your PostgreSQL credentials.*
+*   Replace `user`, `password`, and `blog_db` with your actual PostgreSQL credentials.
+*   **Note:** The application will automatically create the necessary database tables (`users`, `posts`, `comments`) when you start the server for the first time.
 
-Initialize the database (the app will create tables automatically on first run):
+Start the development server:
 ```bash
 npm run dev
 ```
@@ -58,7 +76,7 @@ The server will start at `http://localhost:3000`.
 
 ### 2. Frontend Setup
 
-Navigate to the frontend directory:
+Open a new terminal and navigate to the frontend directory:
 ```bash
 cd frontend
 ```
@@ -68,7 +86,7 @@ Install dependencies:
 npm install
 ```
 
-(Optional) Create a `.env` file if your backend is running on a different port/URL:
+(Optional) Create a `.env` file if your backend is on a different port:
 ```env
 VITE_API_URL=http://localhost:3000
 ```
@@ -78,6 +96,22 @@ Start the development server:
 npm run dev
 ```
 The application will be available at `http://localhost:5173`.
+
+## Deployment
+
+This project includes a `render.yaml` file for easy deployment on [Render](https://render.com/).
+
+### Deploying to Render
+1.  Push this repository to GitHub or GitLab.
+2.  Log in to Render and go to **Blueprints**.
+3.  Click **New Blueprint Instance** and select your repository.
+4.  Render will automatically detect the `render.yaml` configuration and set up:
+    *   **PostgreSQL Database** (`blog-db`)
+    *   **Backend Service** (`blog-api`)
+    *   **Frontend Static Site** (`blog-frontend`)
+5.  Click **Apply** to start the deployment.
+
+*Note: The configuration automatically handles environment variables like `DATABASE_URL` and `JWT_SECRET` generation.*
 
 ## API Endpoints
 
